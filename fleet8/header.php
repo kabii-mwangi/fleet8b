@@ -8,9 +8,9 @@
             <li><a href="dashboard.php" class="nav-link">Dashboard</a></li>
             
             <!-- Vehicles Dropdown -->
-            <?php if (hasPermission('vehicles_view') || hasPermission('fuel_logs_view') || hasPermission('maintenance_view')): ?>
+            <?php if (hasPermission('vehicles_view') || hasPermission('fuel_logs_view') || hasPermission('maintenance_view') || hasPermission('products_view')): ?>
                 <li class="nav-dropdown">
-                    <a href="#" class="nav-link dropdown-toggle">Vehicles <span class="dropdown-arrow">▼</span></a>
+                    <a href="#" class="nav-link dropdown-toggle">Management <span class="dropdown-arrow">▼</span></a>
                     <ul class="dropdown-menu">
                         <?php if (hasPermission('vehicles_view')): ?>
                             <li><a href="vehicles.php">Vehicle Management</a></li>
@@ -20,6 +20,9 @@
                         <?php endif; ?>
                         <?php if (hasPermission('maintenance_view')): ?>
                             <li><a href="maintenance.php">Maintenance</a></li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('products_view')): ?>
+                            <li><a href="products.php">Products</a></li>
                         <?php endif; ?>
                     </ul>
                 </li>
@@ -32,7 +35,14 @@
                 <li><a href="departments.php" class="nav-link">Departments</a></li>
             <?php endif; ?>
             <?php if (hasPermission('reports_view')): ?>
-                <li><a href="reports.php" class="nav-link">Reports</a></li>
+                <li class="nav-dropdown">
+                    <a href="#" class="nav-link dropdown-toggle">Reports <span class="dropdown-arrow">▼</span></a>
+                    <ul class="dropdown-menu">
+                        <li><a href="reports.php?type=fuel">Fuel Logs Report</a></li>
+                        <li><a href="reports.php?type=maintenance">Maintenance Report</a></li>
+                        <li><a href="reports.php?type=products">Product Report</a></li>
+                    </ul>
+                </li>
             <?php endif; ?>
             <?php if (hasPermission('users_view')): ?>
                 <li><a href="users.php" class="nav-link">Users</a></li>
