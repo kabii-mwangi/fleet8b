@@ -3,9 +3,6 @@ require_once 'config.php';
 requireAuth();
 requirePermission('products_view');
 
-$success = '';
-$error = '';
-
 // Handle form submissions
 if ($_POST) {
     $action = $_POST['action'] ?? '';
@@ -36,9 +33,9 @@ if ($_POST) {
                 getUserOfficeId(),
                 $_SESSION['user_id']
             ]);
-            $success = "Product record added successfully!";
+            $success = "Product purchase added successfully!";
         } catch(PDOException $e) {
-            $error = "Error adding product record: " . $e->getMessage();
+            $error = "Error adding product purchase: " . $e->getMessage();
         }
     }
     
@@ -68,9 +65,9 @@ if ($_POST) {
                 $_POST['notes'],
                 (int)$_POST['product_id']
             ]);
-            $success = "Product record updated successfully!";
+            $success = "Product purchase updated successfully!";
         } catch(PDOException $e) {
-            $error = "Error updating product record: " . $e->getMessage();
+            $error = "Error updating product purchase: " . $e->getMessage();
         }
     }
     
@@ -78,9 +75,9 @@ if ($_POST) {
         try {
             $stmt = $pdo->prepare("DELETE FROM products WHERE id = ?");
             $stmt->execute([(int)$_POST['product_id']]);
-            $success = "Product record deleted successfully!";
+            $success = "Product purchase deleted successfully!";
         } catch(PDOException $e) {
-            $error = "Error deleting product record: " . $e->getMessage();
+            $error = "Error deleting product purchase: " . $e->getMessage();
         }
     }
 }
@@ -120,8 +117,8 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product Management - Fleet Management</title>
-    <meta name="description" content="Manage product purchases including engine oils, spare parts and other automotive products">
+    <title>Products Management - Fleet Management</title>
+    <meta name="description" content="Track and manage automotive product purchases including oils, spare parts, and supplies for fleet management">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -129,7 +126,7 @@ try {
     
     <div class="container">
         <div class="page-header">
-            <h1>Product Management</h1>
+            <h1>Products Management</h1>
             <p>Track product purchases and inventory</p>
         </div>
 
@@ -174,41 +171,36 @@ try {
                         
                         <div class="form-group">
                             <label for="order_number">Order Number</label>
-                            <input type="text" id="order_number" name="order_number" class="form-control">
+                            <input type="text" id="order_number" name="order_number" class="form-control" placeholder="e.g., ORD-2024-001">
                         </div>
                         
                         <div class="form-group">
                             <label for="units_purchased">Units Purchased</label>
-                            <input type="number" id="units_purchased" name="units_purchased" class="form-control" min="1" required onchange="calculateTotal()">
+                            <input type="number" id="units_purchased" name="units_purchased" class="form-control" min="1" required>
                         </div>
                         
                         <div class="form-group">
                             <label for="cost_per_unit">Cost per Unit (KSH)</label>
-                            <input type="number" id="cost_per_unit" name="cost_per_unit" class="form-control" step="0.01" min="0" required onchange="calculateTotal()">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="total_cost_display">Total Cost (KSH)</label>
-                            <input type="text" id="total_cost_display" class="form-control" readonly style="background-color: #f5f5f5;">
+                            <input type="number" id="cost_per_unit" name="cost_per_unit" class="form-control" step="0.01" min="0" required>
                         </div>
                         
                         <div class="form-group">
                             <label for="supplier_name">Supplier Name</label>
-                            <input type="text" id="supplier_name" name="supplier_name" class="form-control">
+                            <input type="text" id="supplier_name" name="supplier_name" class="form-control" placeholder="e.g., AutoParts Kenya Ltd">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="description">Description (Optional)</label>
+                            <input type="text" id="description" name="description" class="form-control" placeholder="e.g., 5W-30 Synthetic Oil">
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label for="description">Description</label>
-                        <textarea id="description" name="description" class="form-control" rows="2"></textarea>
+                        <label for="notes">Notes (Optional)</label>
+                        <textarea id="notes" name="notes" class="form-control" rows="3" placeholder="Enter additional notes, storage location, etc."></textarea>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="notes">Notes</label>
-                        <textarea id="notes" name="notes" class="form-control" rows="3"></textarea>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary">Add Product</button>
+                    <button type="submit" class="btn btn-primary">Add Product Purchase</button>
                 </form>
             </div>
         </div>
@@ -216,7 +208,7 @@ try {
 
         <!-- Products List -->
         <div class="section">
-            <h2>Product Purchases</h2>
+            <h2>Product Purchase History</h2>
             <div class="table-container">
                 <table class="data-table">
                     <thead>
@@ -229,7 +221,7 @@ try {
                             <th>Cost/Unit</th>
                             <th>Total Cost</th>
                             <th>Supplier</th>
-                            <th>Created By</th>
+                            <th>Notes</th>
                             <?php if (hasPermission('products_edit') || hasPermission('products_delete')): ?>
                                 <th>Actions</th>
                             <?php endif; ?>
@@ -238,34 +230,53 @@ try {
                     <tbody>
                         <?php if (empty($products)): ?>
                             <tr>
-                                <td colspan="<?php echo hasPermission('products_edit') || hasPermission('products_delete') ? '10' : '9'; ?>" style="text-align: center; color: #666;">
-                                    No product purchases found.
-                                </td>
+                                <td colspan="<?php echo (hasPermission('products_edit') || hasPermission('products_delete')) ? '10' : '9'; ?>" class="no-data">No product purchases found</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($products as $product): ?>
                                 <tr>
-                                    <td><?php echo date('M d, Y', strtotime($product['purchase_date'])); ?></td>
-                                    <td><?php echo htmlspecialchars($product['category_name']); ?></td>
+                                    <td><?php echo formatDate($product['purchase_date']); ?></td>
                                     <td>
-                                        <strong><?php echo htmlspecialchars($product['product_name']); ?></strong>
-                                        <?php if ($product['description']): ?>
-                                            <br><small style="color: #666;"><?php echo htmlspecialchars($product['description']); ?></small>
-                                        <?php endif; ?>
+                                        <span class="category-badge" style="background: #e3f2fd; color: #1565c0; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">
+                                            <?php echo htmlspecialchars($product['category_name']); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="product-info">
+                                            <span class="product-name" style="font-weight: 600;"><?php echo htmlspecialchars($product['product_name']); ?></span>
+                                            <?php if ($product['description']): ?>
+                                                <span class="product-description" style="display: block; color: #666; font-size: 0.9rem;"><?php echo htmlspecialchars($product['description']); ?></span>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
                                     <td><?php echo htmlspecialchars($product['order_number'] ?: '-'); ?></td>
                                     <td><?php echo number_format($product['units_purchased']); ?></td>
                                     <td>KSH <?php echo number_format($product['cost_per_unit'], 2); ?></td>
-                                    <td><strong>KSH <?php echo number_format($product['total_cost'], 2); ?></strong></td>
+                                    <td style="font-weight: 600; color: #28a745;">KSH <?php echo number_format($product['total_cost'], 2); ?></td>
                                     <td><?php echo htmlspecialchars($product['supplier_name'] ?: '-'); ?></td>
-                                    <td><?php echo htmlspecialchars($product['created_by_name'] ?: 'Unknown'); ?></td>
+                                    <td>
+                                        <?php if (!empty($product['notes'])): ?>
+                                            <div class="notes-preview">
+                                                <?php echo nl2br(htmlspecialchars(substr($product['notes'], 0, 50))); ?>
+                                                <?php if (strlen($product['notes']) > 50): ?>
+                                                    <span class="more-notes" onclick="showFullNotes('<?php echo htmlspecialchars($product['notes'], ENT_QUOTES); ?>')">... <a href="javascript:void(0)">Show more</a></span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php else: ?>
+                                            -
+                                        <?php endif; ?>
+                                    </td>
                                     <?php if (hasPermission('products_edit') || hasPermission('products_delete')): ?>
                                         <td>
                                             <?php if (hasPermission('products_edit')): ?>
-                                                <button class="btn btn-small btn-secondary" onclick="editProduct(<?php echo $product['id']; ?>)">Edit</button>
+                                                <button onclick="editProduct(<?php echo $product['id']; ?>, <?php echo $product['category_id']; ?>, '<?php echo htmlspecialchars($product['product_name'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars($product['description'], ENT_QUOTES); ?>', '<?php echo $product['purchase_date']; ?>', '<?php echo htmlspecialchars($product['order_number'], ENT_QUOTES); ?>', <?php echo $product['units_purchased']; ?>, <?php echo $product['cost_per_unit']; ?>, '<?php echo htmlspecialchars($product['supplier_name'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars($product['notes'], ENT_QUOTES); ?>')" class="btn btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; margin-right: 0.5rem;">Edit</button>
                                             <?php endif; ?>
                                             <?php if (hasPermission('products_delete')): ?>
-                                                <button class="btn btn-small btn-danger" onclick="deleteProduct(<?php echo $product['id']; ?>)">Delete</button>
+                                                <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this product purchase record?');">
+                                                    <input type="hidden" name="action" value="delete">
+                                                    <input type="hidden" name="product_id" value="<?php echo $product['id']; ?>">
+                                                    <button type="submit" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Delete</button>
+                                                </form>
                                             <?php endif; ?>
                                         </td>
                                     <?php endif; ?>
@@ -279,18 +290,17 @@ try {
     </div>
 
     <!-- Edit Product Modal -->
-    <div id="editModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h2>Edit Product</h2>
-            <form id="editForm" method="POST">
+    <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 8px; width: 90%; max-width: 600px;">
+            <h3>Edit Product Purchase</h3>
+            <form method="POST">
                 <input type="hidden" name="action" value="edit">
-                <input type="hidden" name="product_id" id="edit_product_id">
+                <input type="hidden" name="product_id" id="editProductId">
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div class="form-group">
-                        <label for="edit_category_id">Product Category</label>
-                        <select id="edit_category_id" name="category_id" class="form-control" required>
+                        <label for="editCategoryId">Product Category</label>
+                        <select id="editCategoryId" name="category_id" class="form-control" required>
                             <?php foreach ($categories as $category): ?>
                                 <option value="<?php echo $category['id']; ?>">
                                     <?php echo htmlspecialchars($category['name']); ?>
@@ -300,118 +310,102 @@ try {
                     </div>
                     
                     <div class="form-group">
-                        <label for="edit_product_name">Product Name</label>
-                        <input type="text" id="edit_product_name" name="product_name" class="form-control" required>
+                        <label for="editProductName">Product Name</label>
+                        <input type="text" id="editProductName" name="product_name" class="form-control" required>
                     </div>
                     
                     <div class="form-group">
-                        <label for="edit_purchase_date">Purchase Date</label>
-                        <input type="date" id="edit_purchase_date" name="purchase_date" class="form-control" required>
+                        <label for="editPurchaseDate">Purchase Date</label>
+                        <input type="date" id="editPurchaseDate" name="purchase_date" class="form-control" required>
                     </div>
                     
                     <div class="form-group">
-                        <label for="edit_order_number">Order Number</label>
-                        <input type="text" id="edit_order_number" name="order_number" class="form-control">
+                        <label for="editOrderNumber">Order Number</label>
+                        <input type="text" id="editOrderNumber" name="order_number" class="form-control">
                     </div>
                     
                     <div class="form-group">
-                        <label for="edit_units_purchased">Units Purchased</label>
-                        <input type="number" id="edit_units_purchased" name="units_purchased" class="form-control" min="1" required onchange="calculateEditTotal()">
+                        <label for="editUnitsPurchased">Units Purchased</label>
+                        <input type="number" id="editUnitsPurchased" name="units_purchased" class="form-control" min="1" required>
                     </div>
                     
                     <div class="form-group">
-                        <label for="edit_cost_per_unit">Cost per Unit (KSH)</label>
-                        <input type="number" id="edit_cost_per_unit" name="cost_per_unit" class="form-control" step="0.01" min="0" required onchange="calculateEditTotal()">
+                        <label for="editCostPerUnit">Cost per Unit (KSH)</label>
+                        <input type="number" id="editCostPerUnit" name="cost_per_unit" class="form-control" step="0.01" min="0" required>
                     </div>
                     
                     <div class="form-group">
-                        <label for="edit_total_cost_display">Total Cost (KSH)</label>
-                        <input type="text" id="edit_total_cost_display" class="form-control" readonly style="background-color: #f5f5f5;">
+                        <label for="editSupplierName">Supplier Name</label>
+                        <input type="text" id="editSupplierName" name="supplier_name" class="form-control">
                     </div>
                     
                     <div class="form-group">
-                        <label for="edit_supplier_name">Supplier Name</label>
-                        <input type="text" id="edit_supplier_name" name="supplier_name" class="form-control">
+                        <label for="editDescription">Description</label>
+                        <input type="text" id="editDescription" name="description" class="form-control">
                     </div>
                 </div>
                 
                 <div class="form-group">
-                    <label for="edit_description">Description</label>
-                    <textarea id="edit_description" name="description" class="form-control" rows="2"></textarea>
+                    <label for="editNotes">Notes</label>
+                    <textarea id="editNotes" name="notes" class="form-control" rows="3"></textarea>
                 </div>
                 
-                <div class="form-group">
-                    <label for="edit_notes">Notes</label>
-                    <textarea id="edit_notes" name="notes" class="form-control" rows="3"></textarea>
-                </div>
-                
-                <div style="text-align: right; margin-top: 20px;">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Update Product</button>
+                <div style="margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary">Update Product Purchase</button>
+                    <button type="button" onclick="closeEditModal()" class="btn btn-secondary">Cancel</button>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
-        const products = <?php echo json_encode($products); ?>;
-        
+        // Calculate total cost automatically
         function calculateTotal() {
-            const units = parseFloat(document.getElementById('units_purchased').value) || 0;
-            const costPerUnit = parseFloat(document.getElementById('cost_per_unit').value) || 0;
-            const total = units * costPerUnit;
-            document.getElementById('total_cost_display').value = 'KSH ' + total.toFixed(2);
-        }
-        
-        function calculateEditTotal() {
-            const units = parseFloat(document.getElementById('edit_units_purchased').value) || 0;
-            const costPerUnit = parseFloat(document.getElementById('edit_cost_per_unit').value) || 0;
-            const total = units * costPerUnit;
-            document.getElementById('edit_total_cost_display').value = 'KSH ' + total.toFixed(2);
-        }
-        
-        function editProduct(id) {
-            const product = products.find(p => p.id == id);
-            if (!product) return;
+            const units = document.getElementById('units_purchased').value;
+            const costPerUnit = document.getElementById('cost_per_unit').value;
+            const totalDisplay = document.getElementById('total_cost_display');
             
-            document.getElementById('edit_product_id').value = product.id;
-            document.getElementById('edit_category_id').value = product.category_id;
-            document.getElementById('edit_product_name').value = product.product_name;
-            document.getElementById('edit_purchase_date').value = product.purchase_date;
-            document.getElementById('edit_order_number').value = product.order_number || '';
-            document.getElementById('edit_units_purchased').value = product.units_purchased;
-            document.getElementById('edit_cost_per_unit').value = product.cost_per_unit;
-            document.getElementById('edit_supplier_name').value = product.supplier_name || '';
-            document.getElementById('edit_description').value = product.description || '';
-            document.getElementById('edit_notes').value = product.notes || '';
+            if (units && costPerUnit) {
+                const total = parseFloat(units) * parseFloat(costPerUnit);
+                totalDisplay.value = 'KSH ' + total.toFixed(2);
+            } else {
+                totalDisplay.value = '';
+            }
+        }
+
+        // Add event listeners for real-time calculation
+        document.getElementById('units_purchased').addEventListener('input', calculateTotal);
+        document.getElementById('cost_per_unit').addEventListener('input', calculateTotal);
+
+        function editProduct(id, categoryId, productName, description, purchaseDate, orderNumber, units, costPerUnit, supplierName, notes) {
+            document.getElementById('editProductId').value = id;
+            document.getElementById('editCategoryId').value = categoryId;
+            document.getElementById('editProductName').value = productName;
+            document.getElementById('editDescription').value = description || '';
+            document.getElementById('editPurchaseDate').value = purchaseDate;
+            document.getElementById('editOrderNumber').value = orderNumber || '';
+            document.getElementById('editUnitsPurchased').value = units;
+            document.getElementById('editCostPerUnit').value = costPerUnit;
+            document.getElementById('editSupplierName').value = supplierName || '';
+            document.getElementById('editNotes').value = notes || '';
             
-            calculateEditTotal();
             document.getElementById('editModal').style.display = 'block';
         }
         
-        function deleteProduct(id) {
-            if (confirm('Are you sure you want to delete this product record?')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.innerHTML = `
-                    <input type="hidden" name="action" value="delete">
-                    <input type="hidden" name="product_id" value="${id}">
-                `;
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-        
-        function closeModal() {
+        function closeEditModal() {
             document.getElementById('editModal').style.display = 'none';
         }
         
         // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('editModal');
-            if (event.target == modal) {
-                closeModal();
+        document.getElementById('editModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeEditModal();
             }
+        });
+        
+        // Show full notes modal
+        function showFullNotes(notes) {
+            alert(notes); // Simple approach - you can create a proper modal if needed
         }
     </script>
 </body>
